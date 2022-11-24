@@ -2,21 +2,41 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
 import { ApolloServer } from 'apollo-server-express';
 import cors from 'cors';
 import polka from 'polka';
+import matter from 'gray-matter';
+import fs from 'fs/promises';
+import path from 'path';
 
 import typeDefs from './gql/schema';
-import resolvers from './resolvers';
+import getSchema from './getSchema';
 
 const PORT = process.env.PORT || 3000;
 
 let schema = makeExecutableSchema({
-  typeDefs: [...typeDefs],
-  resolvers,
+  typeDefs,
+  resolvers: {
+    Query: {
+      unit: async (parent, args, ctx) => {
+        if (!ctx.schema[args.id] || ctx.schema[args.id].typename !== 'unit') {
+          return null;
+        }
+
+        const filepath = ctx.schema[args.id].filepath;
+        const file = await fs.readFile(path.join(process.cwd(), filepath), 'utf8');
+        const { data, content } = matter(file);
+
+        return { ...data, content: content.trim() };
+      },
+    },
+  },
 });
+
+const fileMap = getSchema();
 
 const server = new ApolloServer({
   schema,
-  context: ({ req, res }) => {
-    return { req, res };
+  context: async () => {
+    const schema = fileMap;
+    return { schema };
   },
 });
 
