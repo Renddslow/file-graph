@@ -1,4 +1,10 @@
 {
+  "name": "file-graph",
+  "version": "0.0.1",
+  "scripts": {
+    "prepare": "husky install",
+    "lint-staged": "lint-staged"
+  },
   "devDependencies": {
     "@dmsi/prettier-config": "^1.3.0",
     "esbuild": "^0.15.15",
@@ -7,10 +13,16 @@
     "mri": "^1.2.0",
     "prettier": "^2.8.0"
   },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,md,json}": [
+      "prettier --write"
+    ]
+  },
   "dependencies": {
     "@graphql-tools/schema": "^9.0.10",
     "apollo-server-express": "^3.11.1",
     "cors": "^2.8.5",
     "polka": "^0.5.2"
-  }
+  },
+  "prettier": "@dmsi/prettier-config"
 }
