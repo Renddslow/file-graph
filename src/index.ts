@@ -15,8 +15,19 @@ let schema = makeExecutableSchema({
   typeDefs,
   resolvers: {
     Query: {
-      unit: async (parent, args, ctx) => {
-        if (!ctx.schema[args.id] || ctx.schema[args.id].typename !== 'unit') {
+      course: async (parent, args, ctx) => {
+        if (!ctx.schema[args.id] || ctx.schema[args.id].typename !== 'course') {
+          return null;
+        }
+
+        const filepath = ctx.schema[args.id].filepath;
+        const file = await fs.readFile(path.join(process.cwd(), filepath), 'utf8');
+        const { data, content } = matter(file);
+
+        return { ...data, content: content.trim() };
+      },
+      page: async (parent, args, ctx) => {
+        if (!ctx.schema[args.id] || ctx.schema[args.id].typename !== 'page') {
           return null;
         }
 
@@ -36,6 +47,7 @@ const server = new ApolloServer({
   schema,
   context: async () => {
     const schema = fileMap;
+    console.log(fileMap);
     return { schema };
   },
 });
