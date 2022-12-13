@@ -46,8 +46,8 @@ func parseFrontMatter(content []byte) fm {
 
 // Create
 func createSchema() map[string]ptr {
-	shallowMatches, _ := filepath.Glob("content/*.md")
-	deepMatches, _ := filepath.Glob("content/**/*.md")
+	shallowMatches, _ := filepath.Glob("content/*.yaml")
+	deepMatches, _ := filepath.Glob("content/**/*.mdx")
 
 	matches := []string{}
 	matches = append(matches, shallowMatches...)

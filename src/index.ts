@@ -15,8 +15,8 @@ let schema = makeExecutableSchema({
   typeDefs,
   resolvers: {
     Query: {
-      unit: async (parent, args, ctx) => {
-        if (!ctx.schema[args.id] || ctx.schema[args.id].typename !== 'unit') {
+      course: async (parent, args, ctx) => {
+        if (!ctx.schema[args.id] || ctx.schema[args.id].typename !== 'course') {
           return null;
         }
 
@@ -25,6 +25,29 @@ let schema = makeExecutableSchema({
         const { data, content } = matter(file);
 
         return { ...data, content: content.trim() };
+      },
+      page: async (parent, args, ctx) => {
+        if (!ctx.schema[args.id] || ctx.schema[args.id].typename !== 'page') {
+          return null;
+        }
+
+        const filepath = ctx.schema[args.id].filepath;
+        const file = await fs.readFile(path.join(process.cwd(), filepath), 'utf8');
+        const { data, content } = matter(file);
+
+        return { ...data, content: content.trim() };
+      },
+    },
+    Unit: {
+      pages: async (parent, args, ctx) => {
+        //console.log([parent, args, ctx]);
+        return await parent.pages.map(async (page) => {
+          const filepath = ctx.schema[page].filepath;
+          const file = await fs.readFile(path.join(process.cwd(), filepath), 'utf8');
+          const { data, content } = matter(file);
+
+          return { ...data, content: content.trim() };
+        });
       },
     },
   },
@@ -36,6 +59,7 @@ const server = new ApolloServer({
   schema,
   context: async () => {
     const schema = fileMap;
+    //console.log(fileMap);
     return { schema };
   },
 });
