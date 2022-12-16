@@ -4,6 +4,22 @@ const Query = gql`
   type Query {
     page(id: String!): Page
     course(id: String!): Course
+    listCourses: [String]
+    listUnits(courseId: String!): [String]
+  }
+
+  type Mutation {
+    savePage(input: PageInput!): Page!
+    deletePage(pageId: String!, courseId: String!): Boolean!
+  }
+
+  input PageInput {
+    id: String!
+    unitId: String!
+    pageOrder: Int!
+    courseId: String!
+    title: String!
+    content: String!
   }
 
   type Page {

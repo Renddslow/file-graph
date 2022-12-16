@@ -10,44 +10,153 @@ import typeDefs from './gql/schema';
 import getSchema from './getSchema';
 
 const PORT = process.env.PORT || 3000;
+const TYPENAME_COURSE = 'course';
+const TYPENAME_PAGE = 'page';
+
+/**
+ * Generates a JS object based on a YAML or MDX file using gray-matter
+ * @param id - identifier in the schema of the file (the ID)
+ * @param ctx - access to the server context, specifically the schema
+ * @returns JS object containing the metadata and content of the retrieved file
+ */
+const getSourceFile = async (id, ctx, typename) => {
+  if (!ctx.schema[id] || ctx.schema[id].typename !== typename) {
+    return null;
+  }
+  const filepath = ctx.schema[id].filepath;
+  const file = await fs.readFile(path.join(process.cwd(), filepath), 'utf8');
+  const { data, content } = matter(file);
+
+  return { ...data, content: content.trim() };
+};
+
+const writeSourceFile = async (id, filetype, frontMatter, content, parentId) => {
+  let filepath;
+  if (filetype === TYPENAME_COURSE) {
+    filepath = path.join(process.cwd(), `content/${id}/course.yaml`);
+  } else {
+    filepath = path.join(process.cwd(), `content/${parentId}/pages/${id}.mdx`);
+  }
+  const output = matter.stringify(content ? content : '', frontMatter);
+  fs.writeFile(filepath, output);
+};
 
 let schema = makeExecutableSchema({
   typeDefs,
   resolvers: {
     Query: {
       course: async (parent, args, ctx) => {
-        if (!ctx.schema[args.id] || ctx.schema[args.id].typename !== 'course') {
-          return null;
-        }
-
-        const filepath = ctx.schema[args.id].filepath;
-        const file = await fs.readFile(path.join(process.cwd(), filepath), 'utf8');
-        const { data, content } = matter(file);
-
-        return { ...data, content: content.trim() };
+        return await getSourceFile(args.id, ctx, TYPENAME_COURSE);
       },
       page: async (parent, args, ctx) => {
-        if (!ctx.schema[args.id] || ctx.schema[args.id].typename !== 'page') {
-          return null;
-        }
-
-        const filepath = ctx.schema[args.id].filepath;
-        const file = await fs.readFile(path.join(process.cwd(), filepath), 'utf8');
-        const { data, content } = matter(file);
-
-        return { ...data, content: content.trim() };
+        return await getSourceFile(args.id, ctx, TYPENAME_PAGE);
+      },
+      /**
+       * Return an array of Strings representing the course ID's
+       */
+      listCourses: async (parent, args, ctx) => {
+        console.debug(ctx);
+        const courseList = Object.keys(ctx.schema).filter(
+          (key) => ctx.schema[key].typename === TYPENAME_COURSE,
+        );
+        return courseList;
+      },
+      /**
+       * Return an array of String representing the unit ID's for a given Course
+       * @param parent
+       * @param args - args.courseId is required
+       * @param ctx
+       */
+      listUnits: async (parent, args, ctx) => {
+        const courseFile = await getSourceFile(args.courseId, ctx, TYPENAME_COURSE);
+        return courseFile && courseFile.units ? courseFile.units.map((unit) => unit.id) : null;
       },
     },
     Unit: {
       pages: async (parent, args, ctx) => {
         //console.log([parent, args, ctx]);
         return await parent.pages.map(async (page) => {
-          const filepath = ctx.schema[page].filepath;
-          const file = await fs.readFile(path.join(process.cwd(), filepath), 'utf8');
-          const { data, content } = matter(file);
-
-          return { ...data, content: content.trim() };
+          return await getSourceFile(page, ctx, TYPENAME_PAGE);
         });
+      },
+    },
+    Mutation: {
+      /**
+       * Save the page data to an MDX file under the pages directory.
+       * Also, ensure that the course.yml for this course has the appropriate pageId assigned to the appropriate unit.
+       */
+      savePage: async (parent, args, ctx) => {
+        const filepath = writeSourceFile(
+          args.input.id,
+          TYPENAME_PAGE,
+          {
+            id: args.input.id,
+            type: TYPENAME_PAGE,
+            title: args.input.title,
+          },
+          args.input.content,
+          args.input.courseId,
+        );
+        ctx[args.input.id] = {
+          typename: TYPENAME_PAGE,
+          filepath,
+        };
+        // find the pages and add it into the metadata
+        const courseFile = await getSourceFile(args.input.courseId, ctx, TYPENAME_COURSE);
+        courseFile.units.forEach((unit) => {
+          if (unit.id === args.input.unitId) {
+            if (!unit.pages) {
+              unit.pages = [args.input.id];
+            } else {
+              unit.pages.splice(args.input.pageOrder, 0, args.input.id);
+              console.debug(unit.pages);
+            }
+          }
+        });
+        //console.debug(courseFile);
+        writeSourceFile(args.input.courseId, TYPENAME_COURSE, courseFile, null, null);
+
+        return {
+          id: args.input.id,
+          title: args.input.title,
+          content: args.input.content,
+        };
+      },
+      deletePage: async (parent, args, ctx) => {
+        try {
+          console.debug(args, ctx.schema[args.pageId]);
+          //console.log(ctx.schema[args.pageId].filepath);
+          const filepath = path.join(process.cwd(), ctx.schema[args.pageId].filepath);
+          console.debug(`Deleting ${filepath}`);
+          fs.unlink(filepath);
+
+          const courseFile = await getSourceFile(args.courseId, ctx, TYPENAME_COURSE);
+          //writing this to make the args.unitId optional
+          if (args.unitId) {
+            const unit = courseFile.units.find((unit) => unit.id === args.unitId);
+            const i = unit.pages ? unit.pages.findIndex((p) => p === args.pageId) : -1;
+            if (i > -1) {
+              console.debug(`page index ${i} for ${args.pageId}`);
+              unit.pages.splice(i, 1);
+            }
+          } else {
+            courseFile.units.forEach((unit) => {
+              if (unit.pages) {
+                const i = unit.pages.findIndex((p) => p === args.pageId);
+                if (i > -1) {
+                  console.debug(`page index ${i} for ${args.pageId}`);
+                  unit.pages.splice(i, 1);
+                }
+              }
+            });
+          }
+          //console.debug(courseFile);
+          writeSourceFile(args.courseId, TYPENAME_COURSE, courseFile, null, null);
+
+          return true;
+        } catch (e) {
+          return false;
+        }
       },
     },
   },
@@ -59,7 +168,7 @@ const server = new ApolloServer({
   schema,
   context: async () => {
     const schema = fileMap;
-    //console.log(fileMap);
+    //console.debug(fileMap);
     return { schema };
   },
 });
