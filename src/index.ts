@@ -103,7 +103,7 @@ let schema = makeExecutableSchema({
         };
         // find the pages and add it into the metadata
         const courseFile = await getSourceFile(args.input.courseId, ctx, TYPENAME_COURSE);
-        const unit = courseFile.units.forEach((unit) => {
+        courseFile.units.forEach((unit) => {
           if (unit.id === args.input.unitId) {
             if (!unit.pages) {
               unit.pages = [args.input.id];
@@ -123,22 +123,40 @@ let schema = makeExecutableSchema({
         };
       },
       deletePage: async (parent, args, ctx) => {
-        /*try {
-          console.log(args, ctx[args.pageId]);
-          console.log(ctx[args.pageId].filepath);
-          const filepath = path.join(process.cwd(), ctx[args.pageId].filepath);
-          console.log(filepath);
-          fs.unlink(filepath, (err => {
-            if (err) {
-                throw err;
+        try {
+          console.debug(args, ctx.schema[args.pageId]);
+          //console.log(ctx.schema[args.pageId].filepath);
+          const filepath = path.join(process.cwd(), ctx.schema[args.pageId].filepath);
+          console.debug(`Deleting ${filepath}`);
+          fs.unlink(filepath);
+
+          const courseFile = await getSourceFile(args.courseId, ctx, TYPENAME_COURSE);
+          //writing this to make the args.unitId optional
+          if (args.unitId) {
+            const unit = courseFile.units.find((unit) => unit.id === args.unitId);
+            const i = unit.pages ? unit.pages.findIndex((p) => p === args.pageId) : -1;
+            if (i > -1) {
+              console.debug(`page index ${i} for ${args.pageId}`);
+              unit.pages.splice(i, 1);
             }
-        
-            console.log(`Delete ${filepath} successfully.`);
-          }));
+          } else {
+            courseFile.units.forEach((unit) => {
+              if (unit.pages) {
+                const i = unit.pages.findIndex((p) => p === args.pageId);
+                if (i > -1) {
+                  console.debug(`page index ${i} for ${args.pageId}`);
+                  unit.pages.splice(i, 1);
+                }
+              }
+            });
+          }
+          //console.debug(courseFile);
+          writeSourceFile(args.courseId, TYPENAME_COURSE, courseFile, null, null);
+
           return true;
         } catch (e) {
           return false;
-        }*/
+        }
       },
     },
   },
