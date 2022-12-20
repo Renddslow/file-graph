@@ -28,6 +28,7 @@
     "cors": "^2.8.5",
     "graphql": "^16.6.0",
     "gray-matter": "^4.0.3",
+    "lodash.kebabcase": "^4.1.1",
     "polka": "^0.5.2"
   },
   "prettier": "@dmsi/prettier-config"
