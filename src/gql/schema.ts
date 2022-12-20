@@ -10,16 +10,36 @@ const Query = gql`
 
   type Mutation {
     savePage(input: PageInput!): Page!
-    deletePage(pageId: String!, courseId: String!): Boolean!
+    deletePage(pageId: String!, unitId: String, courseId: String!): Boolean!
+    saveUnit(input: UnitInput!): Unit!
+    deleteUnit(unitId: String!, courseId: String!): Boolean!
+    saveCourse(input: CourseInput!): Course!
   }
 
   input PageInput {
-    id: String!
-    unitId: String!
-    pageOrder: Int!
-    courseId: String!
+    id: String
     title: String!
     content: String!
+    pageOrder: Int!
+    unitId: String
+    courseId: String
+  }
+
+  input UnitInput {
+    id: String
+    title: String!
+    unitOrder: Int!
+    pages: [PageInput]
+    courseId: String
+  }
+
+  input CourseInput {
+    id: String
+    title: String!
+    version: String
+    subtitle: String
+    author: String
+    units: [UnitInput]
   }
 
   type Page {
@@ -30,7 +50,7 @@ const Query = gql`
 
   type Unit {
     id: String!
-    title: String
+    title: String!
     pages: [Page]
   }
 
