@@ -29,6 +29,7 @@
     "graphql": "^16.6.0",
     "gray-matter": "^4.0.3",
     "lodash.kebabcase": "^4.1.1",
+    "lodash.merge": "^4.6.2",
     "polka": "^0.5.2"
   },
   "prettier": "@dmsi/prettier-config"
