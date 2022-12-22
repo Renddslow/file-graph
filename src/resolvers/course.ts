@@ -37,12 +37,13 @@ export const resolvers = {
       courseFile.subtitle = subtitle || courseFile.subtitle;
       courseFile.author = author || courseFile.author;
       if (units) {
-        courseFile.units = [];
-        Promise.all(
-          units.map(async (unit: any): Promise<void> => {
+        courseFile.units = await Promise.all(
+          units.map(async (unit: any): Promise<any> => {
+            unit.id = unit.id || kebabCase(unit.title);
+            unit.type = TYPENAMES.UNIT;
             //cycle through the pages and save them if they're present
             if (unit.pages) {
-              Promise.all(
+              unit.pages = await Promise.all(
                 unit.pages.map(async (p) => {
                   p.id = p.id || kebabCase(p.title);
                   if (hasValidPageFields(p)) {
@@ -63,20 +64,11 @@ export const resolvers = {
                   } else {
                     console.warn(`Page did not contain the correct fields`, p);
                   }
+                  return p.id;
                 }),
               );
-              unit.id = unit.id || kebabCase(unit.title);
-              const newUnit = {
-                id: unit.id,
-                title: unit.title,
-                type: TYPENAMES.UNIT,
-                pages: unit.pages?.map((p) => p.id),
-              };
-              if (unit.pages === undefined || unit.pages === null || unit.pages.length === 0) {
-                delete newUnit.pages;
-              }
-              courseFile.units.push(newUnit);
             }
+            return unit;
           }),
         );
       }
