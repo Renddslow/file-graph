@@ -37,58 +37,44 @@ export const resolvers = {
       courseFile.subtitle = subtitle || courseFile.subtitle;
       courseFile.author = author || courseFile.author;
       if (units) {
-        courseFile.units = [];
-        units.forEach(async (unit: any): Promise<void> => {
-          //cycle through the pages and save them if they're present
-          unit.pages?.forEach(async (p) => {
-            p.id = p.id || kebabCase(p.title);
-            if (hasValidPageFields(p)) {
-              //save the page file
-              console.debug(`Writing page ${p.id}`);
-              await writeSourceFile(
-                ctx,
-                p.id,
-                TYPENAMES.PAGE,
-                {
-                  id: p.id,
-                  type: TYPENAMES.PAGE,
-                  title: p.title,
-                },
-                p.content,
-                courseId,
+        courseFile.units = await Promise.all(
+          units.map(async (unit: any): Promise<any> => {
+            unit.id = unit.id || kebabCase(unit.title);
+            unit.type = TYPENAMES.UNIT;
+            //cycle through the pages and save them if they're present
+            if (unit.pages) {
+              unit.pages = await Promise.all(
+                unit.pages.map(async (p) => {
+                  p.id = p.id || kebabCase(p.title);
+                  if (hasValidPageFields(p)) {
+                    //save the page file
+                    //console.debug(`Writing page ${p.id}`);
+                    await writeSourceFile(
+                      ctx,
+                      p.id,
+                      TYPENAMES.PAGE,
+                      {
+                        id: p.id,
+                        type: TYPENAMES.PAGE,
+                        title: p.title,
+                      },
+                      p.content,
+                      courseId,
+                    );
+                  } else {
+                    console.warn(`Page did not contain the correct fields`, p);
+                  }
+                  return p.id;
+                }),
               );
-            } else {
-              console.debug(`Page did not contain the correct fields`, p);
             }
-          });
-          unit.id = unit.id || kebabCase(unit.title);
-          const newUnit = {
-            id: unit.id,
-            title: unit.title,
-            type: TYPENAMES.UNIT,
-            pages: unit.pages?.map((p) => p.id),
-          };
-          if (unit.pages === undefined || unit.pages.length === 0) {
-            delete newUnit.pages;
-          }
-          courseFile.units.push(newUnit);
-        });
+            return unit;
+          }),
+        );
       }
-      console.debug(`Writing ${courseId}`, courseFile);
+      //console.debug(`Writing ${courseId}`, JSON.stringify(courseFile));
       await writeSourceFile(ctx, courseId, TYPENAMES.COURSE, courseFile, null, null);
-      return {
-        id: courseId,
-        title: courseFile.title,
-        units: courseFile.units?.map(async (unit) => {
-          return {
-            id: unit.id,
-            title: unit.title,
-            pages: unit.pages?.map(async (p) => {
-              return await getSourceFile(p.id, ctx, TYPENAMES.PAGE);
-            }),
-          };
-        }),
-      };
+      return courseFile;
     },
   },
 };

@@ -19,10 +19,10 @@ export const getSourceFile = async (id: string, ctx: any, typename: string): Pro
     return null;
   }
   const filepath = ctx.schema[id].filepath;
-  //console.debug(filepath);
+  //console.debug(`Retrieving ${filepath} for ${id}`);
   const file = await fs.readFile(path.join(process.cwd(), filepath), 'utf8');
   const { data, content } = matter(file);
-
+  //console.debug(`Returning ${id}`);
   return { ...data, content: content.trim() };
 };
 

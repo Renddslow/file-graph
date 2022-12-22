@@ -46,7 +46,7 @@ export const resolvers = {
               unit.pages.splice(currentPageIndex, 1);
             }
             unit.pages.splice(args.input.pageOrder, 0, id);
-            console.debug(unit.pages);
+            //console.debug(unit.pages);
           }
         }
       });
@@ -62,21 +62,21 @@ export const resolvers = {
     deletePage: async (parent, args, ctx) => {
       try {
         const { pageId, courseId, unitId } = args;
-        console.debug(`Deleting page ${pageId} in course ${courseId}`, [args, ctx.schema[pageId]]);
+        //console.debug(`Deleting page ${pageId} in course ${courseId}`, [args, ctx.schema[pageId]]);
         const courseFile = await getSourceFile(courseId, ctx, TYPENAMES.COURSE);
         if (!courseFile) {
           throw new Error(`${courseId} not found`);
         }
         //console.log(ctx.schema[args.pageId].filepath);
         const filepath = path.join(process.cwd(), ctx.schema[args.pageId].filepath);
-        console.debug(`Deleting ${filepath}`);
+        //console.debug(`Deleting ${filepath}`);
         fs.unlink(filepath);
         //writing this to make the args.unitId optional
         if (unitId) {
           const unit = courseFile.units.find((unit) => unit.id === unitId);
           const i = unit.pages ? unit.pages.findIndex((p) => p === pageId) : -1;
           if (i > -1) {
-            console.debug(`Removing page index ${i} for ${pageId} for unit ${unit.id}`);
+            //console.debug(`Removing page index ${i} for ${pageId} for unit ${unit.id}`);
             unit.pages.splice(i, 1);
           }
         } else {
@@ -84,7 +84,7 @@ export const resolvers = {
             if (unit.pages) {
               const i = unit.pages.findIndex((p) => p === pageId);
               if (i > -1) {
-                console.debug(`Removing page index ${i} for ${pageId} for unit ${unit.id}`);
+                //console.debug(`Removing page index ${i} for ${pageId} for unit ${unit.id}`);
                 unit.pages.splice(i, 1);
               }
             }
