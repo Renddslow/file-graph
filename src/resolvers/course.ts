@@ -38,41 +38,47 @@ export const resolvers = {
       courseFile.author = author || courseFile.author;
       if (units) {
         courseFile.units = [];
-        await units.forEach(async (unit: any): Promise<void> => {
-          //cycle through the pages and save them if they're present
-          await unit.pages?.forEach(async (p) => {
-            p.id = p.id || kebabCase(p.title);
-            if (hasValidPageFields(p)) {
-              //save the page file
-              //console.debug(`Writing page ${p.id}`);
-              await writeSourceFile(
-                ctx,
-                p.id,
-                TYPENAMES.PAGE,
-                {
-                  id: p.id,
-                  type: TYPENAMES.PAGE,
-                  title: p.title,
-                },
-                p.content,
-                courseId,
+        Promise.all(
+          units.map(async (unit: any): Promise<void> => {
+            //cycle through the pages and save them if they're present
+            if (unit.pages) {
+              Promise.all(
+                unit.pages.map(async (p) => {
+                  p.id = p.id || kebabCase(p.title);
+                  if (hasValidPageFields(p)) {
+                    //save the page file
+                    //console.debug(`Writing page ${p.id}`);
+                    await writeSourceFile(
+                      ctx,
+                      p.id,
+                      TYPENAMES.PAGE,
+                      {
+                        id: p.id,
+                        type: TYPENAMES.PAGE,
+                        title: p.title,
+                      },
+                      p.content,
+                      courseId,
+                    );
+                  } else {
+                    console.warn(`Page did not contain the correct fields`, p);
+                  }
+                }),
               );
-            } else {
-              console.warn(`Page did not contain the correct fields`, p);
+              unit.id = unit.id || kebabCase(unit.title);
+              const newUnit = {
+                id: unit.id,
+                title: unit.title,
+                type: TYPENAMES.UNIT,
+                pages: unit.pages?.map((p) => p.id),
+              };
+              if (unit.pages === undefined || unit.pages === null || unit.pages.length === 0) {
+                delete newUnit.pages;
+              }
+              courseFile.units.push(newUnit);
             }
-          });
-          unit.id = unit.id || kebabCase(unit.title);
-          const newUnit = {
-            id: unit.id,
-            title: unit.title,
-            type: TYPENAMES.UNIT,
-            pages: unit.pages?.map((p) => p.id),
-          };
-          if (unit.pages === undefined || unit.pages === null || unit.pages.length === 0) {
-            delete newUnit.pages;
-          }
-          courseFile.units.push(newUnit);
-        });
+          }),
+        );
       }
       //console.debug(`Writing ${courseId}`, JSON.stringify(courseFile));
       await writeSourceFile(ctx, courseId, TYPENAMES.COURSE, courseFile, null, null);
