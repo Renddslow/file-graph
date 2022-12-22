@@ -28,7 +28,7 @@ export const resolvers = {
         const { title, courseId, unitOrder } = args.input;
         const courseFile = await getSourceFile(courseId, ctx, TYPENAMES.COURSE);
         if (!courseFile) {
-          console.debug(`Saving a unit in course ${courseId}`, ctx.schema[courseId]);
+          console.debug(`Cannot save a unit in course ${courseId} not found`, ctx.schema[courseId]);
           throw new Error(`${courseId} not found`);
         }
 
@@ -57,7 +57,7 @@ export const resolvers = {
         }
         //and add the new unit
         courseFile.units.splice(unitOrder, 0, saveUnit);
-        console.debug(`Writing course ${courseId} to file`, courseFile);
+        //console.debug(`Writing course ${courseId} to file`, courseFile);
         await writeSourceFile(ctx, courseId, TYPENAMES.COURSE, courseFile, null, null);
 
         //generate return object
